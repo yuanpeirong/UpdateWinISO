@@ -1,0 +1,85 @@
+name: Windows10_LTSB2016_amd64
+
+on: workflow_dispatch
+#on: [push, pull_request]
+
+env:
+  Build_VERSION: '19044.6691'
+  FILE_NAME: Windows10_LTSB2016_amd64
+
+jobs:
+  Windows10_LTSB2016_amd64:
+    runs-on: windows-latest
+
+    steps:
+
+    # 检出本仓库
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    # 检出Win_ISO_Patching_Scripts仓库
+    - name: Checkout repository of Win_ISO_Patching_Scripts
+      run: |
+        cd ..  #Directory: D:\a\UpdateWinISO
+        git clone https://github.com/adavak/Win_ISO_Patching_Scripts.git
+
+    # 下载镜像
+    - name: download ISO
+      shell: pwsh
+      run: |
+        #ls     #Directory: D:\a\UpdateWinISO\UpdateWinISO(即仓库目录)
+        
+        # 切换至Win_ISO_Patching_Scripts根目录 D:\a\UpdateWinISO\Win_ISO_Patching_Scripts
+        cd ..  #Directory: D:\a\UpdateWinISO
+        cd Win_ISO_Patching_Scripts
+        
+        # 下载镜像
+        curl -L -o cn_windows_10_enterprise_2016_ltsb_x64_dvd_9060409.7z.001 https://github.com/yuanpeirong/UpdateWinISO/releases/download/Windows10ISO/cn_windows_10_enterprise_2016_ltsb_x64_dvd_9060409.7z.001
+        curl -L -o cn_windows_10_enterprise_2016_ltsb_x64_dvd_9060409.7z.002 https://github.com/yuanpeirong/UpdateWinISO/releases/download/Windows10ISO/cn_windows_10_enterprise_2016_ltsb_x64_dvd_9060409.7z.002
+        7z x cn_windows_10_enterprise_2016_ltsb_x64_dvd_9060409.7z.001
+        ls
+
+    # 集成更新
+    - name: Update WinISO
+      shell: cmd
+      run: |
+        :: (可选)替换预设文件W10UI.ini
+        :: copy D:\a\UpdateWinISO\UpdateWinISO\myini\W10UI.ini D:\a\UpdateWinISO\Win_ISO_Patching_Scripts\W10UI.ini /Y
+
+        :: 替换W10UI.cmd
+        copy D:\a\UpdateWinISO\UpdateWinISO\mycmd\W10UI.cmd D:\a\UpdateWinISO\Win_ISO_Patching_Scripts\W10UI.cmd /Y
+
+        :: 切换至Win_ISO_Patching_Scripts根目录 D:\a\UpdateWinISO\Win_ISO_Patching_Scripts
+        cd /d D:\a\UpdateWinISO\Win_ISO_Patching_Scripts
+
+        :: 开始集成更新
+        Start.cmd
+
+    # 删除母盘
+    - name: del MasterISO
+      shell: cmd
+      run: |
+        cd /d D:\a\UpdateWinISO\Win_ISO_Patching_Scripts
+        dir
+        del /F /S /Q cn_windows_10_enterprise_2016_ltsb_x64_dvd_9060409.iso
+        dir
+
+    # 打包
+    - name: Package binaries
+      run: |
+        #ls     #Directory: D:\a\UpdateWinISO\UpdateWinISO(即仓库目录)
+        7z a -v1950M ${{env.FILE_NAME}}-${{env.Build_VERSION}}.7z ../Win_ISO_Patching_Scripts/*.iso -mx=9
+
+    # 上传镜像
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{env.FILE_NAME}}-${{env.Build_VERSION}}
+        path: ${{env.FILE_NAME}}-${{env.Build_VERSION}}.7z*
+
+    # 发布镜像
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{env.FILE_NAME}}-${{env.Build_VERSION}}
+        release_name: ${{env.FILE_NAME}}-${{env.Build_VERSION}}
+        files: ${{env.FILE_NAME}}-${{env.Build_VERSION}}.7z*
