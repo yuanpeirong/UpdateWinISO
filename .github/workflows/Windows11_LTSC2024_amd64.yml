@@ -4,7 +4,7 @@ on: workflow_dispatch
 #on: [push, pull_request]
 
 env:
-  Build_VERSION: '26200.7628'
+  Build_VERSION: '26200.7840'
   FILE_NAME: Windows11_LTSC2024_amd64
 
 jobs:
